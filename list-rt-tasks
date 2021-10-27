@@ -1,35 +1,32 @@
 #! /bin/sh
-
-for pid_dir in /proc/[0-9]*
+#
+for pid in /proc/[0-9]*
 do
-	cd ${pid_dir}/task || continue
-	for task in [0-9]*
+	cd ${pid}/task || continue
+	for thread in [0-9]*
 	do
-		if ! prio=$(chrt -p ${task}) 2>/dev/null
+		status=$(cat ${thread}/stat 2>/dev/null) || continue
+		command=$(cat ${thread}/comm 2>/dev/null) || continue
+		status=${status##*)}
+		scheduling=$(echo ${status} | awk '{print $38, $39}')
+		priority=${scheduling%% *}
+
+		# sched(7):
+		# Processes scheduled under one of the real-time policies
+		# (SCHED_FIFO, SCHED_RR) have a sched_priority value in
+		# the range 1 (low) to 99 (high).
+
+		if [ ${priority} -lt 1 ]; then continue; fi
+		policy=${scheduling##* }
+		if [ "$policy" = "1" ]
 		then
-			continue
-		fi
-		if echo "${prio}" | grep OTHER > /dev/null 2>&1
+			scheduler="FIFO"
+		elif [ "$policy" = "2" ]
 		then
-			continue
+			scheduler=" RR "
+		else
+			scheduler=" ?? "
 		fi
-		if echo "${prio}" | grep BATCH > /dev/null 2>&1
-		then
-			continue
-		fi
-		if echo "${prio}" | grep SCHED_FIFO > /dev/null 2>&1
-		then
-			printf "FIFO / "
-		fi
-		if echo "${prio}" | grep SCHED_RR > /dev/null 2>&1
-		then
-			printf "RR / "
-		fi
-		priority=${prio##*priority: }
-		command=$(cat ${task}/comm)
-		printf "%2d [${task}] (${command})\n" ${priority}
+		printf "${scheduler}/%2d [%d] (${command})\n" ${priority} ${thread}
 	done
 done
-
-
-
