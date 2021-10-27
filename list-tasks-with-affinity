@@ -1,0 +1,28 @@
+# cat list-task-with-affinity 
+#!/bin/sh
+
+if [ $# -ne 1 ]
+then
+	echo "usage: $0 <affinity>" >&2
+	exit 1
+fi
+
+for process in /proc/[0-9]*
+do
+
+	name=$(cat ${process}/stat | awk '{print $2}')
+
+	cd ${process}/task
+	
+	for thread in *
+	do
+		r=$(taskset -p ${thread})
+		r=${r##*mask: }
+		if [ "$1" = "$r" ]
+		then
+			echo "$thread (from '$name')"
+		fi
+	done
+	cd - >/dev/null
+done
+
