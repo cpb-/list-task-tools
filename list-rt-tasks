@@ -1,0 +1,35 @@
+#! /bin/sh
+
+for pid_dir in /proc/[0-9]*
+do
+	cd ${pid_dir}/task || continue
+	for task in [0-9]*
+	do
+		if ! prio=$(chrt -p ${task}) 2>/dev/null
+		then
+			continue
+		fi
+		if echo "${prio}" | grep OTHER > /dev/null 2>&1
+		then
+			continue
+		fi
+		if echo "${prio}" | grep BATCH > /dev/null 2>&1
+		then
+			continue
+		fi
+		if echo "${prio}" | grep SCHED_FIFO > /dev/null 2>&1
+		then
+			printf "FIFO / "
+		fi
+		if echo "${prio}" | grep SCHED_RR > /dev/null 2>&1
+		then
+			printf "RR / "
+		fi
+		priority=${prio##*priority: }
+		command=$(cat ${task}/comm)
+		printf "%2d [${task}] (${command})\n" ${priority}
+	done
+done
+
+
+
