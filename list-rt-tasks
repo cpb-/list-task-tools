@@ -1,8 +1,29 @@
 #! /bin/sh
 #
-for pid in /proc/[0-9]*
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# list-rt-tasks: list the realtime-scheduled tasks on the system.
+#
+# Copyright (C) 2021 Christophe BLAESS <christophe.blaess@logilin.fr>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option)
+# any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+cd /proc
+for pid in [0-9]*
 do
-	cd ${pid}/task || continue
+	cd /proc/${pid}/task || continue
 	for thread in [0-9]*
 	do
 		status=$(cat ${thread}/stat 2>/dev/null) || continue
@@ -27,6 +48,13 @@ do
 		else
 			scheduler=" ?? "
 		fi
-		printf "${scheduler}/%2d [%d] (${command})\n" ${priority} ${thread}
+		printf "${scheduler}/%2d " ${priority}
+		if [ ${pid} -eq ${thread} ]
+		then
+			printf "[${thread}] "
+		else
+			printf "[${thread} in ${pid}] "
+		fi
+		printf "(${command})\n"
 	done
 done
