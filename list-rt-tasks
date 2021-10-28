@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
@@ -20,41 +20,96 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-cd /proc
-for pid in [0-9]*
-do
-	cd /proc/${pid}/task || continue
-	for thread in [0-9]*
+
+main()
+{
+	local pid
+	local thread
+
+	cd /proc
+	for pid in [0-9]*
 	do
-		status=$(cat ${thread}/stat 2>/dev/null) || continue
-		command=$(cat ${thread}/comm 2>/dev/null) || continue
-		status=${status##*)}
-		scheduling=$(echo ${status} | awk '{print $38, $39}')
-		priority=${scheduling%% *}
-
-		# sched(7):
-		# Processes scheduled under one of the real-time policies
-		# (SCHED_FIFO, SCHED_RR) have a sched_priority value in
-		# the range 1 (low) to 99 (high).
-
-		if [ ${priority} -lt 1 ]; then continue; fi
-		policy=${scheduling##* }
-		if [ "$policy" = "1" ]
-		then
-			scheduler="FIFO"
-		elif [ "$policy" = "2" ]
-		then
-			scheduler=" RR "
-		else
-			scheduler=" ?? "
-		fi
-		printf "${scheduler}/%2d " ${priority}
-		if [ ${pid} -eq ${thread} ]
-		then
-			printf "[${thread}] "
-		else
-			printf "[${thread} in ${pid}] "
-		fi
-		printf "(${command})\n"
+		cd /proc/${pid}/task || continue
+		for thread in [0-9]*
+		do
+			handle_thread_scheduling ${pid} ${thread}
+		done
 	done
-done
+}
+
+
+
+handle_thread_scheduling()
+{
+	local pid=$1
+	local thread=$2
+
+	local status
+	local command
+	local scheduling
+	local priority
+	local policy
+
+	status=$(cat /proc/${thread}/stat 2>/dev/null) || return 1
+
+	# Command names are surrounded by brackets.
+	command=${status#*(}
+	command=${command%)*}
+
+	# But a command name may also contain a bracket.
+	status=${status##*)}
+
+	scheduling=$(echo ${status} | awk '{print $38, $39}')
+	priority=${scheduling%% *}
+	policy=${scheduling##* }
+
+	# sched(7):
+	# Processes scheduled under one of the real-time policies
+	# (SCHED_FIFO, SCHED_RR) have a sched_priority value in
+	# the range 1 (low) to 99 (high).
+
+	if [ ${priority} -ge 1 ]
+	then
+		display_thread_scheduling "${pid}" "${thread}" "${command}" "${policy}" "${priority}"
+	fi
+	return 0
+}
+
+
+
+display_thread_scheduling()
+{
+	local pid="$1"
+	local thread="$2"
+	local command="$3"
+	local policy="$4"
+	local priority="$5"
+
+	if [ "$policy" = "1" ]
+	then
+		printf "FIFO/${priority} "
+	elif [ "$policy" = "2" ]
+	then
+		printf "RR/${priority} "
+	elif [ "$policy" = "6" ]
+	then
+		printf "DEADLINE "
+	else
+		printf "??/${priority} "
+	fi
+
+	if [ ${pid} -eq ${thread} ]
+	then
+		printf "[${thread}] "
+	else
+		printf "[${thread} in ${pid}] "
+	fi
+	printf "(${command})\n"
+
+	return 0
+}
+
+
+
+main
+exit $?
