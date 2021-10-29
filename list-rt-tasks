@@ -87,15 +87,15 @@ display_thread_scheduling()
 
 	if [ "$policy" = "1" ]
 	then
-		printf "FIFO/${priority} "
+		printf "%02d-FIFO " ${priority}
 	elif [ "$policy" = "2" ]
 	then
-		printf "RR/${priority} "
+		printf "%02d-RR " ${priority}
 	elif [ "$policy" = "6" ]
 	then
 		printf "DEADLINE "
 	else
-		printf "??/${priority} "
+		printf "%02d-?? " ${priority}
 	fi
 
 	if [ ${pid} -eq ${thread} ]
