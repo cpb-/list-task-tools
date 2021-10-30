@@ -100,9 +100,9 @@ display_thread_scheduling()
 
 	if [ ${pid} -eq ${thread} ]
 	then
-		printf "[${thread}] "
+		printf "main thread of process ${pid} "
 	else
-		printf "[${thread} in ${pid}] "
+		printf "thread ${thread} in process ${pid} "
 	fi
 	printf "(${command})\n"
 
